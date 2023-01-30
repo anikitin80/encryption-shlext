@@ -1,0 +1,23 @@
+HKCR
+{
+	NoRemove CLSID
+	{
+		ForceRemove {72c36a7a-ba29-42b2-bb49-bcc58bf4b945} = s 'ShellExtension class'
+		{
+			InprocServer32 = s '%MODULE%'
+			{
+				val ThreadingModel = s 'Apartment'
+			}
+		}
+	}
+	NoRemove *
+	{
+		NoRemove ShellEx
+		{
+			NoRemove ContextMenuHandlers
+			{
+				ForceRemove EncryptionShlExt = s '{72c36a7a-ba29-42b2-bb49-bcc58bf4b945}'
+			}
+		}
+	}
+}
