@@ -11,6 +11,9 @@ CEncryption::CEncryption()
 
 CEncryption::~CEncryption()
 {
+	if (m_hKey != NULL)
+		CryptDestroyKey(m_hKey);
+
 	if (m_hHash != NULL)
 		CryptDestroyHash(m_hHash);
 
@@ -22,6 +25,8 @@ bool CEncryption::SetPassword(LPCWSTR pass)
 {
 	if (m_hHash != NULL)
 		CryptDestroyHash(m_hHash);
+	if (m_hKey != NULL)
+		CryptDestroyKey(m_hKey);
 
 	if (!CryptCreateHash(m_hProv, CALG_SHA_256, NULL, 0, &m_hHash))
 	{
@@ -34,70 +39,19 @@ bool CEncryption::SetPassword(LPCWSTR pass)
 		m_dwLastError = GetLastError();
 		return false;
 	}
+
+	if (!CryptDeriveKey(m_hProv, CALG_AES_256, m_hHash, 0, &m_hKey))
+	{
+		m_dwLastError = GetLastError();
+		return false;
+	}
 	
 	return true;
 }
 
-bool CEncryption::EncryptBuffer(const LPBYTE lpSource, DWORD dwSourceLen, std::vector<BYTE>& buffOutput)
-{
-	bool bResult = false;
-
-	HCRYPTKEY hKey = NULL;
-	if (!CryptDeriveKey(m_hProv, CALG_AES_256, m_hHash, 0, &hKey))
-	{
-		m_dwLastError = GetLastError();
-		return false;
-	}
-
-	// check if we have enough place for encryption
-	DWORD dstLen = dwSourceLen;
-	CryptEncrypt(hKey, NULL, TRUE, 0, NULL, &dstLen, 0);
-	if(buffOutput.size() < dstLen)
-		buffOutput.resize(dstLen);
-
-	// copy source data and encrypt
-	memcpy(buffOutput.data(), lpSource, dwSourceLen);
-	dstLen = dwSourceLen;
-	if (!CryptEncrypt(hKey, NULL, TRUE, 0, buffOutput.data(), &dstLen, static_cast<DWORD>(buffOutput.size())))
-		m_dwLastError = GetLastError();
-	else
-		bResult = true;
-			
-	return bResult;
-}
-
-bool CEncryption::DecryptBuffer(const LPBYTE lpSource, DWORD dwSourceLen, std::vector<BYTE>& buffOutput)
-{
-	bool bResult = false;
-
-	HCRYPTKEY hKey = NULL;
-	if (!CryptDeriveKey(m_hProv, CALG_AES_256, m_hHash, 0, &hKey))
-	{
-		m_dwLastError = GetLastError();
-		return false;
-	}
-
-	// check if we have enough place for decryption and copy source data
-	DWORD dstLen = dwSourceLen;
-	if (buffOutput.size() < dstLen)
-		buffOutput.resize(dstLen);
-	memcpy(buffOutput.data(), lpSource, dwSourceLen);
-
-	// do decrypt
-	if (!CryptDecrypt(hKey, NULL, TRUE, 0, buffOutput.data(), &dstLen))
-		m_dwLastError = GetLastError();
-	else
-	{
-		bResult = true;
-		if(dstLen != dwSourceLen)
-			buffOutput.resize(dstLen);
-	}
-
-	return bResult;
-}
-
 bool CEncryption::EncryptFile(const std::wstring& filePath)
 {
+	// open source file for reading
 	HANDLE hFile = CreateFile(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (INVALID_HANDLE_VALUE == hFile)
 	{
@@ -105,6 +59,7 @@ bool CEncryption::EncryptFile(const std::wstring& filePath)
 		return false;
 	}
 
+	// open target file for writing
 	std::wstring filePathEnc = filePath;
 	filePathEnc += FILE_EXT_ENCRYPTED;
 
@@ -115,16 +70,25 @@ bool CEncryption::EncryptFile(const std::wstring& filePath)
 		return false;
 	}
 
-	std::vector<BYTE> buffOutput;
-	BYTE buff[ENCRYPT_BUFF_SIZE] = {0};
+	// allocate buffer
+	DWORD dstLen = ENCRYPT_BUFF_SIZE;
+	CryptEncrypt(m_hKey, NULL, TRUE, 0, NULL, &dstLen, 0);
+	
+	std::vector<BYTE> buff;
+	buff.resize(dstLen);
+
+	// read data from source file, encrypt and write to target file
 	DWORD dwRead = 0, dwWrite = 0;
-
-	while (ReadFile(hFile, buff, ENCRYPT_BUFF_SIZE, &dwRead, NULL))
+	while (ReadFile(hFile, buff.data(), ENCRYPT_BUFF_SIZE, &dwRead, NULL))
 	{
-		if (!EncryptBuffer(buff, dwRead, buffOutput))
+		DWORD dwDataSize = dwRead;
+		if (!CryptEncrypt(m_hKey, NULL, TRUE, 0, buff.data(), &dwDataSize, static_cast<DWORD>(buff.size())))
+		{
+			m_dwLastError = GetLastError();
 			break;
+		}
 
-		WriteFile(hFileEnc, buffOutput.data(), static_cast<DWORD>(buffOutput.size()), &dwWrite, NULL);
+		WriteFile(hFileEnc, buff.data(), dwDataSize, &dwWrite, NULL);
 		if (dwRead < ENCRYPT_BUFF_SIZE)
 			break;
 	}
@@ -132,18 +96,21 @@ bool CEncryption::EncryptFile(const std::wstring& filePath)
 	CloseHandle(hFile);
 	CloseHandle(hFileEnc);	
 
+	// remove target file if error occurred
 	if (m_dwLastError)
 	{
 		DeleteFile(filePathEnc.c_str());
 		return false;
 	}
 
+	// remove source file if encryption succeeded
 	DeleteFile(filePath.c_str());
 	return true;
 }
 
 bool CEncryption::DecryptFile(const std::wstring& filePath)
 {
+	// open source file for reading
 	HANDLE hFile = CreateFile(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (INVALID_HANDLE_VALUE == hFile)
 	{
@@ -151,6 +118,7 @@ bool CEncryption::DecryptFile(const std::wstring& filePath)
 		return false;
 	}
 
+	// open target file for writing
 	std::wstring filePathDec = filePath;
 	if (filePathDec.substr(filePathDec.length() - 4) == FILE_EXT_ENCRYPTED)
 		filePathDec.erase(filePathDec.length() - 4);
@@ -167,30 +135,40 @@ bool CEncryption::DecryptFile(const std::wstring& filePath)
 		return false;
 	}
 
-	std::vector<BYTE> buffOutput;
-	constexpr int buffSize = ENCRYPT_BUFF_SIZE;
-	BYTE buff[buffSize] = { 0 };
+	// allocate buffer
+	DWORD dstLen = ENCRYPT_BUFF_SIZE;
+	CryptEncrypt(m_hKey, NULL, TRUE, 0, NULL, &dstLen, 0);
+
+	std::vector<BYTE> buff;
+	buff.resize(dstLen);
+
+	// read data from source file, decrypt and write to target file
 	DWORD dwRead = 0, dwWrite = 0;
-
-	while (ReadFile(hFile, buff, buffSize, &dwRead, NULL))
+	while (ReadFile(hFile, buff.data(), dstLen, &dwRead, NULL))
 	{
-		if (!DecryptBuffer(buff, dwRead, buffOutput))
+		DWORD dwDataSize = dwRead;
+		if (!CryptDecrypt(m_hKey, NULL, TRUE, 0, buff.data(), &dwDataSize))
+		{
+			m_dwLastError = GetLastError();
 			break;
+		}
 
-		WriteFile(hFileDec, buffOutput.data(), static_cast<DWORD>(buffOutput.size()), &dwWrite, NULL);
-		if (dwRead < buffSize)
+		WriteFile(hFileDec, buff.data(), dwDataSize, &dwWrite, NULL);
+		if (dwRead < dstLen)
 			break;
 	}
 
 	CloseHandle(hFile);
 	CloseHandle(hFileDec);
 
+	// remove target file if error occurred
 	if (m_dwLastError)
 	{
 		DeleteFile(filePathDec.c_str());
 		return false;
 	}
 
+	// remove source file if encryption succeeded
 	DeleteFile(filePath.c_str());
 	return true;
 }

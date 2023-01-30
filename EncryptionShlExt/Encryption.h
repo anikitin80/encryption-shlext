@@ -14,15 +14,13 @@ public:
 	~CEncryption();
 
 	bool SetPassword(LPCWSTR pass);
-	bool EncryptBuffer(const LPBYTE lpSource, DWORD dwSourceLen, std::vector<BYTE>& buffOutput);
-	bool DecryptBuffer(const LPBYTE lpSource, DWORD dwSourceLen, std::vector<BYTE>& buffOutput);
-
 	bool EncryptFile(const std::wstring& filePath);
 	bool DecryptFile(const std::wstring& filePath);
 
 protected:
 	HCRYPTPROV m_hProv = NULL;
 	HCRYPTHASH m_hHash = NULL;
+	HCRYPTKEY  m_hKey = NULL;
 	DWORD m_dwLastError = 0;
 };
 
