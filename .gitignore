@@ -6,3 +6,5 @@
 x64/Debug/EncryptionShlExt.dll
 /x64/Debug
 /EncryptionShlExt/EncryptionShlExt.vcxproj.user
+/EncryptionShlExt/x64/Release
+/x64/Release

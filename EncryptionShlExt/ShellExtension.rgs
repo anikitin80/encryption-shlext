@@ -22,6 +22,6 @@ HKCR
 	}
 	ForceRemove .kre
 	{
-		ForceRemove DefaultIcon = s '%MODULE%,1'
+		ForceRemove DefaultIcon = s '%MODULE%,2'
 	}
 }

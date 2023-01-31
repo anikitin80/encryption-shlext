@@ -8,11 +8,10 @@
 #define IDC_PASS                        201
 #define IDD_PASSWORD_SET                201
 #define IDC_CONFIRM                     202
-#define IDD_PASSWORD_SET1               202
 #define IDD_PASSWORD_ASK                202
 #define IDI_DECRYPT                     203
-#define IDI_ICON2                       204
 #define IDI_ENCRYPT                     204
+#define IDI_ENCRYPTED_FILE              205
 
 // Next default values for new objects
 // 
