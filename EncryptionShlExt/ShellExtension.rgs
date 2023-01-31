@@ -20,4 +20,8 @@ HKCR
 			}
 		}
 	}
+	ForceRemove .kre
+	{
+		ForceRemove DefaultIcon = s '%MODULE%,1'
+	}
 }

@@ -17,6 +17,8 @@ public:
 	bool EncryptFile(const std::wstring& filePath);
 	bool DecryptFile(const std::wstring& filePath);
 
+    DWORD GetLastError() { return m_dwLastError; }
+
 protected:
 	HCRYPTPROV m_hProv = NULL;
 	HCRYPTHASH m_hHash = NULL;

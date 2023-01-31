@@ -34,6 +34,12 @@ LRESULT CPasswordSetDlg::OnOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bH
 	return 0;
 }
 
+LRESULT CPasswordSetDlg::OnCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+{
+    EndDialog(wID);
+    return 0;
+}
+
 // CPasswordAskDlg dialog
 
 CPasswordAskDlg::CPasswordAskDlg()
@@ -53,4 +59,10 @@ LRESULT CPasswordAskDlg::OnOK(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bH
 	m_Password = pass;
 	EndDialog(wID);
 	return 0;
+}
+
+LRESULT CPasswordAskDlg::OnCancel(WORD wNotifyCode, WORD wID, HWND hWndCtl, BOOL& bHandled)
+{
+    EndDialog(wID);
+    return 0;
 }

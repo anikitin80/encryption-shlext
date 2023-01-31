@@ -91,4 +91,12 @@
       <Filter>Source Files</Filter>
     </Midl>
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\decrypt.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+    <Image Include="res\encrypt.ico">
+      <Filter>Resource Files</Filter>
+    </Image>
+  </ItemGroup>
 </Project>

@@ -22,9 +22,7 @@ class ATL_NO_VTABLE CShellExtension :
 	public IContextMenu
 {
 public:
-	CShellExtension()
-	{
-	}
+	CShellExtension();
 
 DECLARE_REGISTRY_RESOURCEID(106)
 
@@ -58,8 +56,13 @@ public:
 	STDMETHODIMP QueryContextMenu(HMENU, UINT, UINT, UINT, UINT);
 
 protected:
+
+	HBITMAP LoadBitmapFromIcon(HMODULE hModule, LPCTSTR lpszResource);
+
 	std::wstring m_sFilePath;
 	bool m_bEncrypt = true;
+	static HBITMAP m_hbmpEncrypt;
+	static HBITMAP m_hbmpDecrypt;
 
 };
 

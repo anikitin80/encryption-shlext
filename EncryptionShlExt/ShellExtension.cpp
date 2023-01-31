@@ -8,6 +8,18 @@
 
 // CShellExtension
 
+HBITMAP CShellExtension::m_hbmpEncrypt = NULL;
+HBITMAP CShellExtension::m_hbmpDecrypt = NULL;
+
+CShellExtension::CShellExtension()
+{
+	// load bitmaps
+    if(!m_hbmpEncrypt)
+	    m_hbmpEncrypt = LoadBitmapFromIcon(_AtlBaseModule.m_hInst, MAKEINTRESOURCE(IDI_ENCRYPT));
+    if(!m_hbmpDecrypt)
+	    m_hbmpDecrypt = LoadBitmapFromIcon(_AtlBaseModule.m_hInst, MAKEINTRESOURCE(IDI_DECRYPT));
+}
+
 STDMETHODIMP CShellExtension::Initialize(LPCITEMIDLIST pidlFolder, LPDATAOBJECT pDataObj, HKEY hProgID)
 {
 	FORMATETC fmt = { CF_HDROP, NULL, DVASPECT_CONTENT,
@@ -64,6 +76,7 @@ HRESULT CShellExtension::QueryContextMenu(HMENU hmenu, UINT uMenuIndex, UINT uid
 	// show 'Encrypt' menu command or 'Decrypt' for already encrypted file
 	InsertMenu(hmenu, uMenuIndex, MF_BYPOSITION, 
 		uidFirstCmd, m_bEncrypt? _T("Encrypt with password") : _T("Decrypt with password"));
+	SetMenuItemBitmaps(hmenu, uMenuIndex, MF_BYPOSITION, m_bEncrypt? m_hbmpEncrypt : m_hbmpDecrypt, NULL);
 
 	return MAKE_HRESULT(SEVERITY_SUCCESS, FACILITY_NULL, 1);
 }
@@ -122,7 +135,7 @@ HRESULT CShellExtension::InvokeCommand(LPCMINVOKECOMMANDINFO pCmdInfo)
 
 		encryption.SetPassword(dlg.m_Password.c_str());
 		if (!encryption.EncryptFile(m_sFilePath))
-			wsprintf(szMsg, _T("Error occurred when encrypting file:\n\n%s"), m_sFilePath.c_str());
+			wsprintf(szMsg, _T("Error occurred when encrypting file:\n%s\nError code: 0x%X"), m_sFilePath.c_str(), encryption.GetLastError());
 	}
 	else
 	{
@@ -131,12 +144,65 @@ HRESULT CShellExtension::InvokeCommand(LPCMINVOKECOMMANDINFO pCmdInfo)
 			return S_OK;
 
 		encryption.SetPassword(dlg.m_Password.c_str());
-		if (!encryption.DecryptFile(m_sFilePath))
-			wsprintf(szMsg, _T("Error occurred when decrypting file:\n\n%s"), m_sFilePath.c_str());
+        if (!encryption.DecryptFile(m_sFilePath))
+        {
+            DWORD dwLastError = encryption.GetLastError();
+            if (dwLastError == NTE_BAD_DATA)
+                wcscpy_s(szMsg, _T("Wrong password or invalid data format."));
+            else
+                wsprintf(szMsg, _T("Error occurred when decrypting file:\n%s\nError code: 0x%X"), m_sFilePath.c_str(), dwLastError);
+        }
 	}
 
 	if(wcslen(szMsg))
-		MessageBox(pCmdInfo->hwnd, szMsg, _T("EncryptionShlExt"), MB_ICONERROR);
+		MessageBox(pCmdInfo->hwnd, szMsg, _T("EncryptionShlExt"), MB_ICONWARNING);
 
 	return S_OK;
+}
+
+HBITMAP CShellExtension::LoadBitmapFromIcon(HMODULE hModule, LPCTSTR lpszResource)
+{
+	// Create DCs for drawing icon
+	HDC hDC = GetDC(NULL);
+	HDC hMemDC = CreateCompatibleDC(hDC);
+
+	HBITMAP hResultBmp = NULL;
+
+	BITMAPINFO bmi;        // bitmap header 
+	VOID *pvBits;          // pointer to DIB section 
+	ULONG   ulBitmapWidth, ulBitmapHeight;      // bitmap width/height 
+
+	ulBitmapWidth = GetSystemMetrics(SM_CXSMICON);
+	ulBitmapHeight = GetSystemMetrics(SM_CYSMICON);
+
+	// zero the memory for the bitmap info 
+	ZeroMemory(&bmi, sizeof(BITMAPINFO));
+
+	// setup bitmap info  
+	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bmi.bmiHeader.biWidth = ulBitmapWidth;
+	bmi.bmiHeader.biHeight = ulBitmapHeight;
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;         // four 8-bit components 
+	bmi.bmiHeader.biCompression = BI_RGB;
+	bmi.bmiHeader.biSizeImage = ulBitmapWidth * ulBitmapHeight * 4;
+
+	// create our DIB section and select the bitmap into the dc 
+	HBITMAP hMemBmp = CreateDIBSection(hMemDC, &bmi, DIB_RGB_COLORS, &pvBits, NULL, 0x0);
+	HGDIOBJ hOrgBMP = SelectObject(hMemDC, hMemBmp);
+
+	HICON hIcon = (HICON)::LoadImage(hModule, lpszResource, IMAGE_ICON, ulBitmapWidth, ulBitmapHeight, 0);
+
+	if (hIcon)
+		DrawIconEx(hMemDC, 0, 0, hIcon, ulBitmapWidth, ulBitmapHeight, 0, NULL, DI_NORMAL);
+
+	hResultBmp = hMemBmp;
+	hMemBmp = NULL;
+
+	SelectObject(hMemDC, hOrgBMP);
+	DeleteDC(hMemDC);
+	ReleaseDC(NULL, hDC);
+	DestroyIcon(hIcon);
+
+	return hResultBmp;
 }

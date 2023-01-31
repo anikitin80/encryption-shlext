@@ -275,6 +275,10 @@
   <ItemGroup>
     <Midl Include="EncryptionShlExt.idl" />
   </ItemGroup>
+  <ItemGroup>
+    <Image Include="res\decrypt.ico" />
+    <Image Include="res\encrypt.ico" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

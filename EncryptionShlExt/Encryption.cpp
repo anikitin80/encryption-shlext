@@ -6,7 +6,7 @@
 CEncryption::CEncryption()
 {
 	if (!CryptAcquireContext(&m_hProv, NULL, MS_ENH_RSA_AES_PROV, PROV_RSA_AES, CRYPT_VERIFYCONTEXT | CRYPT_SILENT))
-		m_dwLastError = GetLastError();
+		m_dwLastError = ::GetLastError();
 }
 
 CEncryption::~CEncryption()
@@ -30,19 +30,19 @@ bool CEncryption::SetPassword(LPCWSTR pass)
 
 	if (!CryptCreateHash(m_hProv, CALG_SHA_256, NULL, 0, &m_hHash))
 	{
-		m_dwLastError = GetLastError();
+		m_dwLastError = ::GetLastError();
 		return false;
 	}
 
 	if (!CryptHashData(m_hHash, (BYTE*)pass, static_cast<DWORD>(wcslen(pass) * sizeof(WCHAR)), 0))
 	{
-		m_dwLastError = GetLastError();
+		m_dwLastError = ::GetLastError();
 		return false;
 	}
 
 	if (!CryptDeriveKey(m_hProv, CALG_AES_256, m_hHash, 0, &m_hKey))
 	{
-		m_dwLastError = GetLastError();
+		m_dwLastError = ::GetLastError();
 		return false;
 	}
 	
@@ -55,7 +55,7 @@ bool CEncryption::EncryptFile(const std::wstring& filePath)
 	HANDLE hFile = CreateFile(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (INVALID_HANDLE_VALUE == hFile)
 	{
-		m_dwLastError = GetLastError();
+		m_dwLastError = ::GetLastError();
 		return false;
 	}
 
@@ -66,7 +66,7 @@ bool CEncryption::EncryptFile(const std::wstring& filePath)
 	HANDLE hFileEnc = CreateFile(filePathEnc.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (INVALID_HANDLE_VALUE == hFileEnc)
 	{
-		m_dwLastError = GetLastError();
+		m_dwLastError = ::GetLastError();
 		return false;
 	}
 
@@ -84,7 +84,7 @@ bool CEncryption::EncryptFile(const std::wstring& filePath)
 		DWORD dwDataSize = dwRead;
 		if (!CryptEncrypt(m_hKey, NULL, TRUE, 0, buff.data(), &dwDataSize, static_cast<DWORD>(buff.size())))
 		{
-			m_dwLastError = GetLastError();
+			m_dwLastError = ::GetLastError();
 			break;
 		}
 
@@ -114,7 +114,7 @@ bool CEncryption::DecryptFile(const std::wstring& filePath)
 	HANDLE hFile = CreateFile(filePath.c_str(), GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (INVALID_HANDLE_VALUE == hFile)
 	{
-		m_dwLastError = GetLastError();
+		m_dwLastError = ::GetLastError();
 		return false;
 	}
 
@@ -131,7 +131,7 @@ bool CEncryption::DecryptFile(const std::wstring& filePath)
 	HANDLE hFileDec = CreateFile(filePathDec.c_str(), GENERIC_WRITE, FILE_SHARE_READ, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
 	if (INVALID_HANDLE_VALUE == hFileDec)
 	{
-		m_dwLastError = GetLastError();
+		m_dwLastError = ::GetLastError();
 		return false;
 	}
 
@@ -149,7 +149,7 @@ bool CEncryption::DecryptFile(const std::wstring& filePath)
 		DWORD dwDataSize = dwRead;
 		if (!CryptDecrypt(m_hKey, NULL, TRUE, 0, buff.data(), &dwDataSize))
 		{
-			m_dwLastError = GetLastError();
+			m_dwLastError = ::GetLastError();
 			break;
 		}
 
