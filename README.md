@@ -1,14 +1,14 @@
 # encryption-shlext
-Shell extension dll for Windows explorer which allows to encrypt/decrypt files from explorer context menu.
+This shell extension dll for Windows explorer uses CryptoAPI and allows to encrypt/decrypt files from explorer context menu.
 
 Installing:
 
-1) register dll using commang:
+1) register dll using command (as Administrator):
    regsvr32.exe EncryptionShlExt.dll 
 2) make logoff/logon or restart explorer.exe
 
 Unistalling:
 
-1) unregister dll using commang:
+1) unregister dll using command  (as Administrator):
    regsvr32.exe /u EncryptionShlExt.dll 
 2) make logoff/logon or restart explorer.exe
